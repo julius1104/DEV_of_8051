@@ -1,0 +1,5 @@
+".\Objects\STARTUP.obj",
+".\Objects\led.obj",
+".\Objects\delay.obj" 
+TO ".\Objects\stc_example1" 
+PRINT(".\Listings\stc_example1.m51") RAMSIZE(256) 

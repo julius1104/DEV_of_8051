@@ -1,0 +1,175 @@
+C51 COMPILER V9.60.0.0   IR                                                                09/05/2021 20:49:31 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE IR
+OBJECT MODULE PLACED IN .\Objects\IR.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE IR.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\IR.lst
+                    -) TABS(2) OBJECT(.\Objects\IR.obj)
+
+line level    source
+
+   1          #include <string.h>
+   2          #include "IR.h"
+   3          
+   4          void init_IR()
+   5          {
+   6   1          //接收
+   7   1          EA  = 1;  //总中断开
+   8   1          EX0 = 1;  //IR 接收头使用外部中断0 来处理
+   9   1          IT0 = 1;  //下降沿触发
+  10   1      
+  11   1          //发射
+  12   1          TMOD |= 0x01; //T0 16位工作方式
+  13   1          LaunchLED = 1;      //发射端口常态为高电平
+  14   1      }
+  15          
+  16          //发射
+  17          void IR_launch(IR_CODE ir_code)
+  18          {
+  19   1          IR_launch_time(1, m9);   //高电平9mS
+  20   1          IR_launch_time(0, m4_5); //低电平4.5mS
+  21   1      
+  22   1          /*┈ 发送4帧数据┈*/
+  23   1          IR_launch_frame(ir_code.custom_height);
+  24   1          IR_launch_frame(ir_code.custom_lower);
+  25   1          IR_launch_frame(ir_code.ir_code);
+  26   1          IR_launch_frame(ir_code.re_ir_code);
+  27   1      
+  28   1          /*┈┈ 结束码 ┈┈*/
+  29   1          IR_launch_time(1, m_65);
+  30   1          IR_launch_time(0, m40);
+  31   1      }
+  32          
+  33          //发送 1 帧数据
+  34          void IR_launch_frame(unsigned char frame)
+  35          {
+  36   1          char i = 0;
+  37   1          for(i=0; i<8; i++)  //循环8次移位
+  38   1          {
+  39   2              IR_launch_time(1, m_65);  //高电平0.65ms
+  40   2              if(frame >>i & 0x1)
+  41   2                  IR_launch_time(0, m1_6); //发送最低位
+  42   2              else
+  43   2                  IR_launch_time(0, m_56);
+  44   2           }
+  45   1      }
+  46          
+  47          //38KHz脉冲发射 + 延时程序
+  48          void IR_launch_time(bit status,unsigned int t)
+  49          {
+  50   1        TH0 = t>>8; //输入T0初始值
+  51   1        TL0 = t;
+  52   1        TF0 = 0;    //清0
+  53   1        TR0 = 1;    //启动定时器0
+  54   1        if(0 == status)
+C51 COMPILER V9.60.0.0   IR                                                                09/05/2021 20:49:31 PAGE 2   
+
+  55   1        {
+  56   2          //BT=0时不发射38KHz脉冲只延时；BT=1发射38KHz脉冲且延时；
+  57   2          while(! TF0);
+  58   2        }
+  59   1        else
+  60   1        {
+  61   2            while(1)
+  62   2            {
+  63   3                /**
+  64   3                 * 38KHz脉冲，占空比5:26
+  65   3                 * 以下是逻辑分析仪测试结果
+  66   3                 * 3:23us  识别正常
+  67   3                 * 6:23us  识别正常
+  68   3                 * 10:23us 识别失败
+  69   3                 * 12:23us 识别失败
+  70   3                 * 16:23us 识别失败
+  71   3                 */
+  72   3                LaunchLED = 0;
+  73   3                if(TF0)break;
+  74   3                if(TF0)break;
+  75   3                LaunchLED = 1;
+  76   3                if(TF0)break;
+  77   3                if(TF0)break;
+  78   3                if(TF0)break;
+  79   3                if(TF0)break;
+  80   3                if(TF0)break;
+  81   3                if(TF0)break;
+  82   3                if(TF0)break;
+  83   3                if(TF0)break;
+  84   3                if(TF0)break;
+  85   3                if(TF0)break;
+  86   3               }
+  87   2          }
+  88   1          TR0=0; //关闭定时器0
+  89   1          TF0=0; //标志位溢出则清0
+  90   1          LaunchLED =1; //脉冲停止后，发射端口常态为高电平
+  91   1      }
+  92          
+  93          //接收
+  94          IR_CODE IR_recv()
+  95          {
+  96   1          /**
+  97   1           * 数据格式：
+  98   1           * 9ms低电平 4.5ms高电平 头部
+  99   1           * 定制高位  定制低位  数据码  数据反码
+ 100   1           * 1: 560us低电平 1680us高电平  0.56ms 1.7ms
+ 101   1           * 0: 560us低电平 560us高电平   0.56ms 0.56ms
+ 102   1           */
+ 103   1          IR_CODE ir_code;
+ 104   1          unsigned char i,k;
+ 105   1          unsigned char *ir_char_p;
+ 106   1          unsigned char ir_char;
+ 107   1          ir_char_p = (unsigned char *)&ir_code;
+ 108   1      
+ 109   1          //栈分配 IR_CODE 竟然还要手动清0
+ 110   1          memset(&ir_code, 0, 4);
+ 111   1      
+ 112   1          delayms(5); //9ms 内必须是低电平否则就不是头信息
+ 113   1          if(0 == IR)
+ 114   1          {
+ 115   2              while(! IR);//等待4.5ms的高电平
+ 116   2      
+C51 COMPILER V9.60.0.0   IR                                                                09/05/2021 20:49:31 PAGE 3   
+
+ 117   2              //检测是否是 2.5ms 重码
+ 118   2              delayms(3);
+ 119   2              if(1 == IR)
+ 120   2              {
+ 121   3                  //k 4位编码
+ 122   3                  for(k=0; k<4; k++)
+ 123   3                  {
+ 124   4                      ir_char = 0x0;
+ 125   4                      //i 每一个编码的 8bit
+ 126   4                      for(i=0;i<8;i++)
+ 127   4                      {
+ 128   5                          while(IR);     //等待变为低电平时
+ 129   5                          while(! IR);   //等待变为高电平后
+ 130   5                          delay700us();  //休眠700us 后读值
+ 131   5                          ir_char |= (char)IR << i;//先存低位
+ 132   5                          //使用下面指针操作就会失败出现不稳定
+ 133   5                          //*ir_char_p |= (char)IR << i;
+ 134   5                      }
+ 135   4                      *ir_char_p = ir_char;
+ 136   4                      ir_char_p++;
+ 137   4                  }
+ 138   3      
+ 139   3                  //计算反码 code码是否正确
+ 140   3                  if(ir_code.ir_code != ~(ir_code.re_ir_code))
+ 141   3                  {
+ 142   4                      memset(&ir_code, 0, 4);
+ 143   4                  }
+ 144   3              }
+ 145   2          }
+ 146   1          return ir_code;
+ 147   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    375    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      18
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

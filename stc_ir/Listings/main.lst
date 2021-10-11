@@ -1,0 +1,257 @@
+C51 COMPILER V9.60.0.0   MAIN                                                              09/05/2021 20:49:31 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <reg52.h>
+   2          #include <intrins.h>
+   3          #include <string.h>
+   4          #include "uart.h"
+   5          #include "delay.h"
+   6          #include "IR.h"
+   7          #include "eeprom.h"
+   8          
+   9          IR_CODE read_ir_code(unsigned char);
+  10          void save_block_ir_code();
+  11          void save_ir_code(IR_CODE ir_code,unsigned int addr);
+  12          
+  13          //全局接收红外线信号存放
+  14          IR_CODE global_ir_code;
+  15          
+  16          //从eeprom 中读取 按键值
+  17          IR_CODE k3_ir_code;
+  18          IR_CODE k4_ir_code;
+  19          IR_CODE k5_ir_code;
+  20          IR_CODE k6_ir_code;
+  21          
+  22          //3个按键
+  23          sbit K3 = P3 ^ 5;
+  24          sbit K4 = P3 ^ 4;
+  25          sbit K5 = P3 ^ 3;
+  26          
+  27          #ifdef DEBUG
+              //main 中 EX1 = 1;
+              //外部中断1 按下时发送红外线信号
+              void infrared_led_int1() interrupt 2
+              {
+                  EX1 = 0;
+                  IR_launch(global_ir_code);
+                  EX1 = 1;
+              }
+              #endif
+  37          
+  38          void main()
+  39          {
+  40   1          IR_CODE tt;
+  41   1          //总中断开关
+  42   1          EA  = 1;
+  43   1          init_uart();
+  44   1          init_IR();
+  45   1      
+  46   1          //全局接收红外线清0
+  47   1          memset(&global_ir_code, 0, 4);
+  48   1      
+  49   1          //从eeprom 中读取 按键值
+  50   1          k3_ir_code = read_ir_code(0);
+  51   1          k4_ir_code = read_ir_code(4);
+  52   1          k5_ir_code = read_ir_code(8);
+  53   1      
+  54   1          while(1)
+C51 COMPILER V9.60.0.0   MAIN                                                              09/05/2021 20:49:31 PAGE 2   
+
+  55   1          {
+  56   2              memset(&tt, 0xff, 4);
+  57   2              send_code(tt);
+  58   2              //按键按下
+  59   2              if(0 == K3)
+  60   2              {
+  61   3                  //去抖动后
+  62   3                  delayms(30);
+  63   3                  if(0 == K3)
+  64   3                  {
+  65   4                      //关中断 中断打开时，时钟可能不准
+  66   4                      EA  = 0;
+  67   4      
+  68   4                      //如果有全局接收 则存入 eeprom
+  69   4                      if(global_ir_code.ir_code)
+  70   4                      {
+  71   5                          k3_ir_code = global_ir_code;
+  72   5                          save_block_ir_code();
+  73   5                          memset(&global_ir_code, 0, 4);
+  74   5      
+  75   5                          //闪灯2次表示 存入成功
+  76   5                          P1 = 0x0;
+  77   5                          delayms(300);
+  78   5                          P1 = 0xff;
+  79   5                          delayms(300);
+  80   5                          P1 = 0x0;
+  81   5                          delayms(300);
+  82   5                          P1 = 0xff;
+  83   5                      }
+  84   4                      else
+  85   4                      {
+  86   5                          IR_launch(k3_ir_code);
+  87   5      
+  88   5                          //闪灯1次表示 发射成功
+  89   5                          P1 = 0x0;
+  90   5                          delayms(300);
+  91   5                          P1 = 0xff;
+  92   5                      }
+  93   4                      //开中断
+  94   4                      EA  = 1;
+  95   4                  }
+  96   3              }
+  97   2              //按键按下
+  98   2              if(0 == K4)
+  99   2              {
+ 100   3                  //去抖动后
+ 101   3                  delayms(30);
+ 102   3                  if(0 == K4)
+ 103   3                  {
+ 104   4                      //关中断 中断打开时，时钟可能不准
+ 105   4                      EA  = 0;
+ 106   4      
+ 107   4                      //如果有全局接收 则存入 eeprom
+ 108   4                      if(global_ir_code.ir_code)
+ 109   4                      {
+ 110   5                          k4_ir_code = global_ir_code;
+ 111   5                          save_block_ir_code();
+ 112   5                          memset(&global_ir_code, 0, 4);
+ 113   5      
+ 114   5                          //闪灯2次表示 存入成功
+ 115   5                          P1 = 0x0;
+ 116   5                          delayms(300);
+C51 COMPILER V9.60.0.0   MAIN                                                              09/05/2021 20:49:31 PAGE 3   
+
+ 117   5                          P1 = 0xff;
+ 118   5                          delayms(300);
+ 119   5                          P1 = 0x0;
+ 120   5                          delayms(300);
+ 121   5                          P1 = 0xff;
+ 122   5                      }
+ 123   4                      else
+ 124   4                      {
+ 125   5                          IR_launch(k4_ir_code);
+ 126   5      
+ 127   5                          //闪灯1次表示 发射成功
+ 128   5                          P1 = 0x0;
+ 129   5                          delayms(300);
+ 130   5                          P1 = 0xff;
+ 131   5                      }
+ 132   4                      //开中断
+ 133   4                      EA  = 1;
+ 134   4                  }
+ 135   3              }
+ 136   2              //按键按下
+ 137   2              if(0 == K5)
+ 138   2              {
+ 139   3                  //去抖动后
+ 140   3                  delayms(30);
+ 141   3                  if(0 == K5)
+ 142   3                  {
+ 143   4                      //关中断 中断打开时，时钟可能不准
+ 144   4                      EA  = 0;
+ 145   4      
+ 146   4                      //如果有全局接收 则存入 eeprom
+ 147   4                      if(global_ir_code.ir_code)
+ 148   4                      {
+ 149   5                          k5_ir_code = global_ir_code;
+ 150   5                          save_block_ir_code();
+ 151   5                          memset(&global_ir_code, 0, 4);
+ 152   5      
+ 153   5                          //闪灯2次表示 存入成功
+ 154   5                          P1 = 0x0;
+ 155   5                          delayms(300);
+ 156   5                          P1 = 0xff;
+ 157   5                          delayms(300);
+ 158   5                          P1 = 0x0;
+ 159   5                          delayms(300);
+ 160   5                          P1 = 0xff;
+ 161   5                      }
+ 162   4                      else
+ 163   4                      {
+ 164   5                          IR_launch(k5_ir_code);
+ 165   5      
+ 166   5                          //闪灯1次表示 发射成功
+ 167   5                          P1 = 0x0;
+ 168   5                          delayms(300);
+ 169   5                          P1 = 0xff;
+ 170   5                      }
+ 171   4                      //开中断
+ 172   4                      EA  = 1;
+ 173   4                  }
+ 174   3              }
+ 175   2          }
+ 176   1      }
+ 177          
+ 178          void IR_int() interrupt 0
+C51 COMPILER V9.60.0.0   MAIN                                                              09/05/2021 20:49:31 PAGE 4   
+
+ 179          {
+ 180   1          IR_CODE ir_code;
+ 181   1          EX0 = 0;//处理过程中 关中断
+ 182   1          ir_code = IR_recv();
+ 183   1          if(ir_code.ir_code)
+ 184   1          {
+ 185   2              //点亮P1 显示收到了编码
+ 186   2              P1 = 0x0;
+ 187   2              delayms(300);
+ 188   2              P1 = 0xff;
+ 189   2      
+ 190   2              //发送到串口
+ 191   2              send_code(ir_code);
+ 192   2      
+ 193   2              //给全局编码赋值
+ 194   2              global_ir_code = ir_code;
+ 195   2          }
+ 196   1          EX0 = 1;//处理结束后 开中断
+ 197   1      }
+ 198          
+ 199          //读取 eeprom 中的值
+ 200          IR_CODE read_ir_code(unsigned char addr)
+ 201          {
+ 202   1          IR_CODE ir_code;
+ 203   1          ir_code.custom_height = read(addr);
+ 204   1          ir_code.custom_lower  = read(addr+1);
+ 205   1          ir_code.ir_code       = read(addr+2);
+ 206   1          ir_code.re_ir_code    = read(addr+3);
+ 207   1          return ir_code;
+ 208   1      }
+ 209          
+ 210          //保存所有编码
+ 211          void save_block_ir_code()
+ 212          {
+ 213   1          erase();
+*** WARNING C209 IN LINE 213 OF main.c: '_erase': too few actual parameters
+ 214   1          save_ir_code(k3_ir_code, 0);
+ 215   1          save_ir_code(k4_ir_code, 4);
+ 216   1          save_ir_code(k5_ir_code, 8);
+ 217   1      }
+ 218          
+ 219          //保存一个编码
+ 220          void save_ir_code(IR_CODE ir_code,unsigned int addr)
+ 221          {
+ 222   1          prog(addr,   ir_code.custom_height);
+ 223   1          prog(addr+1, ir_code.custom_lower);
+ 224   1          prog(addr+2, ir_code.ir_code);
+ 225   1          prog(addr+3, ir_code.re_ir_code);
+ 226   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    764    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     20      19
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

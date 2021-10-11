@@ -1,0 +1,109 @@
+C51 COMPILER V9.60.0.0   EEPROM                                                            09/05/2021 20:49:30 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE EEPROM
+OBJECT MODULE PLACED IN .\Objects\eeprom.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE eeprom.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\ee
+                    -prom.lst) TABS(2) OBJECT(.\Objects\eeprom.obj)
+
+line level    source
+
+   1          #include "eeprom.h"
+   2          
+   3          /* 执行完操作以后安全锁 */
+   4          void lock_ISP()
+   5          {
+   6   1          ISP_CONTR = 0;
+   7   1          ISP_CMD = 0;
+   8   1          ISP_TRIG = 0;
+   9   1          ISP_ADDRH = 0xff;
+  10   1          ISP_ADDRL = 0xff;
+  11   1      }
+  12          
+  13          /* 擦除指定地址所在的整个扇区  */
+  14          void erase(unsigned int addr)
+  15          {
+  16   1          addr += BASE_ADDR;
+  17   1      
+  18   1          //发送地址
+  19   1          ISP_ADDRH = addr >> 8;
+  20   1          ISP_ADDRL = addr;
+  21   1      
+  22   1          //发送解锁命令
+  23   1          ISP_CONTR = En_Wait_ISP;
+  24   1      
+  25   1          //发擦除命令
+  26   1          ISP_CMD = CMD_Erase;
+  27   1      
+  28   1          //发送触发命令
+  29   1          ISP_TRIG = 0x46;
+  30   1          ISP_TRIG = 0xB9;
+  31   1      
+  32   1          //最后锁定 ISP 仿误操作
+  33   1          lock_ISP();
+  34   1      }
+  35          
+  36          unsigned char read(unsigned int addr)
+  37          {
+  38   1          addr += BASE_ADDR;
+  39   1      
+  40   1          //发送地址
+  41   1          ISP_ADDRH = addr >> 8;
+  42   1          ISP_ADDRL = addr;
+  43   1      
+  44   1          //发送解锁命令
+  45   1          ISP_CONTR = En_Wait_ISP;
+  46   1      
+  47   1          //发读命令
+  48   1          ISP_CMD = CMD_Read;
+  49   1      
+  50   1          //发送触发命令
+  51   1          ISP_TRIG = 0x46;
+  52   1          ISP_TRIG = 0xB9;
+  53   1      
+  54   1          //最后锁定 ISP 仿误操作
+C51 COMPILER V9.60.0.0   EEPROM                                                            09/05/2021 20:49:30 PAGE 2   
+
+  55   1          lock_ISP();
+  56   1      
+  57   1          return ISP_DATA;
+  58   1      }
+  59          
+  60          void prog(unsigned int addr, unsigned char dat)
+  61          {
+  62   1          addr += BASE_ADDR;
+  63   1      
+  64   1          //发送要保存的数据
+  65   1          ISP_DATA = dat;
+  66   1      
+  67   1          //发送地址
+  68   1          ISP_ADDRH = addr >> 8;
+  69   1          ISP_ADDRL = addr;
+  70   1      
+  71   1          //发送解锁命令
+  72   1          ISP_CONTR = En_Wait_ISP;
+  73   1      
+  74   1          //发编程命令
+  75   1          ISP_CMD = CMD_Prog;
+  76   1      
+  77   1          //发送触发命令
+  78   1          ISP_TRIG = 0x46;
+  79   1          ISP_TRIG = 0xB9;
+  80   1      
+  81   1          //最后锁定 ISP 仿误操作
+  82   1          lock_ISP();
+  83   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    106    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
