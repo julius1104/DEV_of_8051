@@ -1,3 +1,6 @@
+//refer from: https://www.cnblogs.com/ningci/p/5425771.html
+
+
 #include <reg52.h>
 #include <intrins.h>
 #include <string.h>
